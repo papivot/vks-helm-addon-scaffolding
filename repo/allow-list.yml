@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: addon-repo-allow-list-configmap
+  namespace: svc-tkg-domain-c15
+data:
+  addon-repo-allow-list: fling-addonrepository
