@@ -1,0 +1,52 @@
+apiVersion: addons.kubernetes.vmware.com/v1alpha1
+kind: AddonRepository
+metadata:
+  name: fling-addonrepository
+  namespace: vmware-system-vks-public
+  annotations:
+    addons.kubernetes.vmware.com/package-offerings: |
+      {
+        "repositoryVersion": "0.0.1",
+        "packages": {
+          "headlamp.vsphere.fling.vmware.com": {
+            "versions": ["0.39.0","0.40.0"]
+          },
+          "external-secrets.vsphere.fling.vmware.com": {
+            "versions": ["2.0.0"]
+          },
+          "falco.vsphere.fling.vmware.com": {
+            "versions": ["8.0.0"]
+          },
+          "keda.vsphere.fling.vmware.com": {
+            "versions": ["2.19.0"]
+          },
+          "kubescape.vsphere.fling.vmware.com": {
+            "versions": ["1.30.4"]
+          },
+          "kyverno.vsphere.fling.vmware.com": {
+            "versions": ["3.7.0"]
+          },
+          "opentelemetry-collector.vsphere.fling.vmware.com": {
+            "versions": ["0.145.0"]
+          },
+          "trivy.vsphere.fling.vmware.com": {
+            "versions": ["0.32.0"]
+          }
+        }
+      }
+spec:
+  fetch:
+    imgpkgBundle:
+      imageURL: [PLACEHOLDER]
+  targetRepositoryName: fling-addonrepository
+  version: 0.0.1
+---
+apiVersion: addons.kubernetes.vmware.com/v1alpha1
+kind: AddonRepositoryInstall
+metadata:
+  name: fling-addonrepository-install
+  namespace: vmware-system-vks-public
+spec:
+  addonRepositoryRef:
+    name: fling-addonrepository
+    namespace: vmware-system-vks-public
