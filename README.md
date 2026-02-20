@@ -36,7 +36,25 @@ helm repo update
 Find the chart version you want to package:
 
 ```bash
+# Grab the repo URL 
+helm repo list
+# Get the latest version
 helm search repo <chart-name> --versions
+helm search repo [reponame]
+# e.g.
+#         --- chart name                  --- chart version
+#         (without kedacore)  
+#kedacore/keda                           	2.19.0       	2.19.0     	Event-based autoscaler for workloads on Kubernetes
+#kedacore/keda-add-ons-http              	0.12.1       	0.12.1     	Event-based autoscaler for HTTP workloads on Ku...
+#kedacore/external-scaler-azure-cosmos-db	0.1.0        	0.1.0      	Event-based autoscaler for Azure Cosmos DB chan...
+
+```
+Optional: Login to the Registry before proceeding -
+
+```bash
+docker login registry.domainname.com -u username
+Password: 
+Login Succeeded
 ```
 
 ### 2. Initialize Package Scaffolding
@@ -49,7 +67,7 @@ Run `vks-helm-fling-init.sh` to create the initial directory structure and confi
 
 *   `package-name`: Name of the package (e.g., `headlamp`).
 *   `package-version`: Version of the package (e.g., `0.39.0`).
-*   `registry-url`: OCI registry URL where the package bundle will be stored (e.g., `vsphere-labs-docker-prod-local.usw5.packages.broadcom.com/vks-helm-labs/`).
+*   `registry-url`: OCI registry URL where the package bundle will be stored (e.g., `registry.domainname.com/vks-helm/`).
 
 ### 3. Initialize Carvel Package
 
@@ -58,11 +76,32 @@ Navigate to the package directory and initialize the package using `kctrl`.
 ```bash
 cd <package-name>
 kctrl package init
+
+### Sample output
+Welcome! Before we start, do install the latest Carvel suite of tools, specifically ytt, imgpkg, vendir and kbld.
+
+Basic Information
+A package reference name must be at least three '.' separated segments,e.g.
+samplepackage.corp.com
+> Enter the package reference name (falco.vsphere.fling.vmware.com):
+
+Content
+Please provide the location from where your Kubernetes manifests or Helm chart can be fetched. This will be bundled as a part of the package.
+1: Local Directory
+2: Github Release
+3: Helm Chart from Helm Repository
+4: Git Repository
+5: Helm Chart from Git Repository
+> Enter source (3):
+
+> Enter helm chart repository URL (https://falcosecurity.github.io/charts):
+> Enter helm chart name (falco):
+> Enter helm chart version (8.0.0):
 ```
 
 Follow the prompts:
 *   Select **Helm Chart from Helm Repository** (usually option 3).
-*   Enter the Helm repository URL, chart name, and version.
+*   Enter the Helm repository URL, chart name, and version. (see example above)
 
 ### 4. Customize Upstream (Important)
 
@@ -79,6 +118,17 @@ Build and release the package. This pushes the image bundle to the registry and 
 
 ```bash
 kctrl package release --openapi-schema --version <package-version> --repo-output ../repo
+
+### Sample output
+Prerequisites
+1. Host is authorized to push images to a registry (can be set up by running
+`docker login`)
+2. `package init` ran successfully.
+
+The bundle created needs to be pushed to an OCI registry. (format:
+<REGISTRY_URL/REPOSITORY_NAME>) e.g. index.docker.io/k8slt/sample-bundle
+> Enter the registry URL (registry.domainname.com/vks-helm-labs/falco):
+
 ```
 
 ### 6. Process for VKS
