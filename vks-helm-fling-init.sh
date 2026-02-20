@@ -6,6 +6,15 @@
 # It also checks if the required Carvel binaries are present.
 # It also provides the sample commands for reference.
 
+set -o pipefail
+
+check_command() {
+    if ! command -v "$1" &> /dev/null; then
+        echo "CRITICAL :: $1 could not be found in the PATH. Download and install the latest binary before proceeding." >&2
+        exit 1
+    fi
+}
+
 display_usage() { 
 	echo "This script must be run with three arguments." 
 	echo -e "\nUsage: $0 name-of-package version-details[x.y.z] registry-info" 
@@ -38,6 +47,15 @@ fi
 		display_usage
 		exit 0
 	fi 
+
+##################################################
+### Check if Carvel binaries are present
+##################################################
+check_command kctrl
+check_command yq
+check_command imgpkg
+check_command kbld
+check_command kapp
 
 ##################################################
 #### Create the top level folders
@@ -161,30 +179,6 @@ spec:
       type: object
       properties:
 EOF
-
-##################################################
-### Check if Carvel binaries are present
-##################################################
-if ! command -v kctrl &> /dev/null
-then
-    echo "CRITICAL :: kctrl could not be found in the PATH. Download and install the latest binary before proceeding."
-fi
-if ! command -v yq &> /dev/null
-then
-    echo "CRITICAL :: yq could not be found in the PATH. Download and install the latest binary before proceeding."
-fi
-if ! command -v imgpkg &> /dev/null
-then
-    echo "CRITICAL :: imgpkg could not be found in the PATH. Download and install the latest binary before proceeding."
-fi
-if ! command -v kbld &> /dev/null
-then
-    echo "CRITICAL :: kbld could not be found in the PATH. Download and install the latest binary before proceeding."
-fi
-if ! command -v kapp &> /dev/null
-then
-    echo "CRITICAL :: kapp could not be found in the PATH. Download and install the latest binary before proceeding."
-fi
 
 echo 
 echo
