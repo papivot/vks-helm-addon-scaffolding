@@ -6,6 +6,15 @@
 # It also checks if the required Carvel binaries are present.
 # It also provides the sample commands for reference.
 
+set -o pipefail
+
+check_command() {
+    if ! command -v "$1" &> /dev/null; then
+        echo "CRITICAL :: $1 could not be found in the PATH. Download and install the latest binary before proceeding." >&2
+        exit 1
+    fi
+}
+
 display_usage() { 
 	echo "This script must be run with three arguments." 
 	echo -e "\nUsage: $0 name-of-package version-details[x.y.z] registry-info" 
@@ -39,9 +48,34 @@ fi
 		exit 0
 	fi 
 
+##################################################
+### Check if required binaries are present
+##################################################
+check_command yq
+check_command gzip
+check_command base64
+check_command kctrl
+check_command imgpkg
+check_command kbld
+check_command kapp
+
+if [ ! -d "$PACKAGE_NAME" ]; then
+    echo "CRITICAL :: Directory $PACKAGE_NAME does not exist. Please run vks-helm-fling-init.sh first." >&2
+    exit 1
+fi
+
 cd "$PACKAGE_NAME" || exit 1
 pwd
-yq '.spec.valuesSchema.openAPIv3.properties' < ./carvel-artifacts/packages/"$PACKAGE_NAME".vsphere.fling.vmware.com/package.yml > ./dummy.yml
+
+PACKAGE_YML="./carvel-artifacts/packages/$PACKAGE_NAME.vsphere.fling.vmware.com/package.yml"
+
+if [ ! -f "$PACKAGE_YML" ]; then
+    echo "CRITICAL :: File $PACKAGE_YML not found." >&2
+    echo "Please run 'kctrl package release --openapi-schema --version $PACKAGE_VERSION --repo-output ../repo' before running this script." >&2
+    exit 1
+fi
+
+yq '.spec.valuesSchema.openAPIv3.properties' < "$PACKAGE_YML" > ./dummy.yml
 if [ ! -f AddonConfigDefinition-template.yml ]; then
     echo "WARN: AddonConfigDefinition-template.yml file not found! Creating one.."
 
@@ -111,18 +145,20 @@ yq eval -i '.spec.values = load("./upstream/values.yaml")' ./AddonConfig-templat
 # We perform a series of transformations to ensure the schema is valid.
 
 # 1. Remove all "oneOf" constructs that have integer and string types and replace them with x-kubernetes-int-or-string
-yq eval -i '(.. | select(has("oneOf") and ([.oneOf[].type] | contains(["integer"])) and ([.oneOf[].type] | contains(["string"])))) |= (del(.oneOf) | .x-kubernetes-int-or-string = true | .default = null)' ./dummy.yml
 # 2. Remove all "type: array" constructs that have empty items and replace them with "type: object" items
-yq eval -i '(.. | select(has("type")  and .type == "array" and (.items | length == 0))) |= .items = {"type": "object"}' ./dummy.yml
+yq eval -i '
+  (.. | select(has("oneOf") and ([.oneOf[].type] | contains(["integer"])) and ([.oneOf[].type] | contains(["string"])))) |= (del(.oneOf) | .x-kubernetes-int-or-string = true | .default = null) |
+  (.. | select(has("type")  and .type == "array" and (.items | length == 0))) |= .items = {"type": "object"}
+' ./dummy.yml
 
 yq eval -i '.spec.schema.openAPIV3Schema.properties = load("dummy.yml")' ./AddonConfigDefinition-template.yml
 
 ACD=$(gzip -c ./AddonConfigDefinition-template.yml | base64 -w 0)
 export ACD
-yq -i '.metadata.annotations."addons.kubernetes.vmware.com/addon-config-definition"= env(ACD)' carvel-artifacts/packages/"$PACKAGE_NAME".vsphere.fling.vmware.com/package.yml
+yq -i '.metadata.annotations."addons.kubernetes.vmware.com/addon-config-definition"= env(ACD)' "$PACKAGE_YML"
 
-cp ./carvel-artifacts/packages/"$PACKAGE_NAME".vsphere.fling.vmware.com/package.yml ../repo/packages/"$PACKAGE_NAME".vsphere.fling.vmware.com/"$PACKAGE_VERSION".yml
-# rm ./dummy.yml
+cp "$PACKAGE_YML" ../repo/packages/"$PACKAGE_NAME".vsphere.fling.vmware.com/"$PACKAGE_VERSION".yml
+rm ./dummy.yml
 
 ##################################################
 ##### Sample commands for reference
